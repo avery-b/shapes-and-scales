@@ -101,8 +101,10 @@ header{
   height:clamp(64px,7vw,110px);margin:0 -30px;
   background:#3a2a5a center / cover no-repeat;   /* image set at load; crop to fit, never stretch */
 }
-.kofi{position:absolute;right:30px;top:50%;transform:translateY(-50%);display:block;line-height:0}
-.kofi img{height:36px;width:auto;border:0}
+.kofi{position:absolute;right:30px;top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;line-height:0;
+  font-size:clamp(18px,2.3vw,30px);height:1.82em;padding:0 .3em;background:#0A0A0A}   /* black box, same height as the title box */
+.kofi img{height:1.25em;width:auto;border:0;display:block}
 .m-only,.tab-ic,.tab-short{display:none}
 
 /* help button (desktop, progression builder only) */
@@ -328,7 +330,8 @@ input[type=range]{accent-color:var(--sel-bg);width:140px;vertical-align:middle}
 /* ---------- phone layout (≤720px): top instrument menu, bottom tab bar, mini player ---------- */
 @media (max-width:360px){
   .brand h1{font-size:13.5px !important;padding:.36em .6em .4em !important}
-  .kofi img{height:24px !important}
+  .kofi{font-size:13.5px !important;height:1.86em !important}
+  .kofi img{height:1.3em !important}
 }
 @media (max-width:720px){
   .fx-ctl{display:none}
@@ -339,8 +342,8 @@ input[type=range]{accent-color:var(--sel-bg);width:140px;vertical-align:middle}
   .help-wrap{display:none}
   .brand{justify-content:space-between;gap:10px;height:60px;margin:0 -16px;padding:0 16px}
   .brand h1{font-size:16px;padding:.36em .7em .4em;white-space:nowrap}
-  .kofi{position:static;transform:none;flex:0 0 auto}
-  .kofi img{height:27px}
+  .kofi{position:static;transform:none;flex:0 0 auto;font-size:16px;height:1.86em}
+  .kofi img{height:1.3em}
   .hctrls{position:relative;flex-wrap:nowrap;gap:8px;margin-top:12px}
   .m-inst{
     display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1;min-width:0;
@@ -364,6 +367,7 @@ input[type=range]{accent-color:var(--sel-bg);width:140px;vertical-align:middle}
   .hright .m-cap-tune{order:2;margin-top:4px}
   #tuning-sel{order:3;width:100%}
   #dulc-not-seg{order:4}
+  #dulc-frets-sel{order:5;width:100%}
   .hright .rocker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
   .rocker button{min-width:0;padding:9px 2px;font-size:12.5px}
   #dulc-not-seg button{flex:1}
@@ -486,6 +490,7 @@ input[type=range]{accent-color:var(--sel-bg);width:140px;vertical-align:middle}
       <button data-not="seq" class="on">Frets 1·2·3</button>
       <button data-not="trad">1·1.5·2</button>
     </div>
+    <select id="dulc-frets-sel" aria-label="Which extra frets your dulcimer has" hidden></select>
     <select id="tuning-sel" aria-label="Tuning"></select>
     <div class="rocker" role="group" aria-label="Instrument">
       <button id="inst-guitar" class="on">Guitar</button>
@@ -810,14 +815,25 @@ const BASS_OPEN={4:28,3:33,2:38,1:43};
 const DULC_OPEN={3:50,2:57,1:62};      // strings: 3=bass, 2=middle, 1=melody
 const BANJO_OPEN={5:67,4:50,3:55,2:59,1:62};   // 5-string banjo; string 5 = short drone
 const UKE_OPEN={4:67,3:60,2:64,1:69};          // ukulele, standard re-entrant g C E A
-/* Diatonic dulcimer fretboard incl. the 1.5 and 6.5 frets: [fret number, semitones from open] */
-const DULC_FRETS=[[0,0],[1,2],[1.5,3],[2,4],[3,5],[4,7],[5,9],[6,10],[6.5,11],
-                  [7,12],[8,14],[9,16],[10,17],[11,19],[12,21],[13,22],[14,24]];
-const DULC_SEMIS=new Set(DULC_FRETS.map(f=>f[1]));
-const SEMI_TO_N={};DULC_FRETS.forEach(([n,s])=>SEMI_TO_N[s]=n);
-const N_TO_SEMI={};DULC_FRETS.forEach(([n,s])=>N_TO_SEMI[n]=s);
-const SEMI_TO_IDX={};DULC_FRETS.forEach(([n,s],i)=>SEMI_TO_IDX[s]=i);
-const N_TO_IDX={};DULC_FRETS.forEach(([n,s],i)=>N_TO_IDX[n]=i);
+/* Diatonic dulcimer fretboard: [fret number, semitones from open].
+   The 1.5 and 6.5 frets are optional extras; which ones exist depends on the player's
+   instrument (state.dulcFrets). DULC_FRETS and the lookups below are rebuilt in place. */
+const DULC_FRETS_ALL=[[0,0],[1,2],[1.5,3],[2,4],[3,5],[4,7],[5,9],[6,10],[6.5,11],
+                      [7,12],[8,14],[9,16],[10,17],[11,19],[12,21],[13,22],[14,24]];
+const DULC_LAYOUTS={
+  std: {name:'Extra frets: 6½', extra:[6.5]},
+  full:{name:'Extra frets: 1½ + 6½', extra:[1.5,6.5]},
+  none:{name:'Extra frets: none', extra:[]},
+};
+const DULC_FRETS=[],DULC_SEMIS=new Set(),SEMI_TO_N={},N_TO_SEMI={},SEMI_TO_IDX={},N_TO_IDX={};
+function applyDulcLayout(id){
+  const extra=(DULC_LAYOUTS[id]||DULC_LAYOUTS.std).extra;
+  DULC_FRETS.length=0;DULC_SEMIS.clear();
+  [SEMI_TO_N,N_TO_SEMI,SEMI_TO_IDX,N_TO_IDX].forEach(o=>{for(const k in o)delete o[k];});
+  DULC_FRETS_ALL.forEach(f=>{if(Number.isInteger(f[0])||extra.includes(f[0]))DULC_FRETS.push(f);});
+  DULC_FRETS.forEach(([n,s],i)=>{DULC_SEMIS.add(s);SEMI_TO_N[s]=n;N_TO_SEMI[n]=s;SEMI_TO_IDX[s]=i;N_TO_IDX[n]=i;});
+}
+applyDulcLayout();
 function dulcLabelForN(n){return state.dulcNotation==='trad'?n:N_TO_IDX[n];}
 function dulcLabelForSemi(s){return state.dulcNotation==='trad'?SEMI_TO_N[s]:SEMI_TO_IDX[s];}
 function banjoVoicing(rootPc,tones,bassIv,pos,minFret=0){
@@ -1374,17 +1390,17 @@ function dulcDiagramSVG(v,outSet){
   const endIdx=DULC_FRETS.findIndex(f=>f[1]>=hi);
   let lastIdx=Math.max(endIdx,startIdx);
   while(lastIdx<DULC_FRETS.length-1&&DULC_FRETS[lastIdx][0]-startN<4)lastIdx++;
-  const endN=DULC_FRETS[lastIdx][0];
-  const ku=24, cw=30, left=44, top=26, bot=22;   // 24px per whole fret; .5 frets get half
+  const startS=DULC_FRETS[startIdx][1], endS=DULC_FRETS[lastIdx][1];
+  const su=16, cw=30, left=44, top=26, bot=22;   // 16px per semitone: whole steps wide, half steps narrow, like the real neck
   const n=3;
-  const H=top+(endN-startN)*ku+bot;
+  const H=top+(endS-startS)*su+bot;
   const W=left+(n-1)*cw+20;
   let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">`;
   for(let i=0;i<n;i++)
-    s+=`<line x1="${left+i*cw}" y1="${top}" x2="${left+i*cw}" y2="${top+(endN-startN)*ku}" stroke="${C.grid}" stroke-width="1"/>`;
+    s+=`<line x1="${left+i*cw}" y1="${top}" x2="${left+i*cw}" y2="${top+(endS-startS)*su}" stroke="${C.grid}" stroke-width="1"/>`;
   for(let i=startIdx;i<=lastIdx;i++){
     const [fn,fs]=DULC_FRETS[i];
-    const y=top+(fn-startN)*ku;
+    const y=top+(fs-startS)*su;
     const nut=(fn===0);
     s+=`<line x1="${left}" y1="${y}" x2="${left+(n-1)*cw}" y2="${y}" stroke="${nut?C.nut:C.fret}" stroke-width="${nut?4:1}"/>`;
     if(fn>0)
@@ -1401,9 +1417,9 @@ function dulcDiagramSVG(v,outSet){
       s+=`<text x="${x}" y="${top-9}" text-anchor="middle" font-size="12" fill="${col}" font-family="'Merriweather Sans',sans-serif">O</text>`;
     }else{
       const idx=DULC_FRETS.findIndex(f=>f[1]===semi);
-      const fn=DULC_FRETS[idx][0], prevN=DULC_FRETS[idx-1][0];
-      const y=top+((fn+prevN)/2-startN)*ku;
-      s+=`<circle cx="${x}" cy="${y}" r="8" fill="${col}"${ring}/>`;
+      const prevS=DULC_FRETS[idx-1][1];
+      const y=top+((semi+prevS)/2-startS)*su;
+      s+=`<circle cx="${x}" cy="${y}" r="7.5" fill="${col}"${ring}/>`;
     }
     s+=`<text x="${x}" y="${H-6}" text-anchor="middle" font-size="10.5" font-weight="600" fill="${col}" font-family="'Merriweather Sans',sans-serif">${role.replace('b','♭').replace('#','♯')}</text>`;
   });
@@ -1465,12 +1481,31 @@ function pianoCard(name,rn,voi,outSet){
   d.innerHTML=`<h3>${name}</h3><div class="rn">${rn}</div>${pianoSVG(voi.midis,voi.rootPc,outSet)}<div class="tabline">${notes}</div>`;
   return d;
 }
-function chordCard(name,rn,v,inst,outSet){
+/* chord notes a dulcimer can't reach at all with its current frets and tuning */
+function dulcMissingPcs(pcs,frets){
+  const have=new Set();
+  [1,2,3].forEach(s=>(frets||DULC_FRETS).forEach(([n,se])=>have.add((DULC_OPEN[s]+se)%12)));
+  return [...new Set(pcs)].filter(pc=>!have.has(pc));
+}
+function chordCard(name,rn,v,inst,outSet,chordPcs){
   const d=document.createElement('div');
   d.className='card';
   if(!v){
     d.classList.add('empty');
-    d.innerHTML=`<h3>${name}</h3><p>No compact shape within a 4-fret span here.<br>Try another inversion or position.</p>`;
+    let msg='No compact shape within a 4-fret span here.<br>Try another inversion or position.';
+    if(inst==='dulcimer'&&chordPcs){
+      const miss=dulcMissingPcs(chordPcs);
+      if(miss.length){
+        const SH=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+        const names=miss.map(pc=>SH[pc]).join(' and ');
+        const withAll=dulcMissingPcs(miss,DULC_FRETS_ALL).length===0;
+        const need=withAll&&state.dulcFrets!=='full'
+          ?(dulcMissingPcs(miss,DULC_FRETS_ALL.filter(f=>f[0]!==1.5)).length===0?' It needs the 6½ fret.':' It needs the 1½ fret.')
+          :' Try a different tuning.';
+        msg=`${names} ${miss.length>1?"aren't":"isn't"} on your fretboard in this tuning.${need}`;
+      }
+    }
+    d.innerHTML=`<h3>${name}</h3><p>${msg}</p>`;
     return d;
   }
   const {svg,tab}=diagramSVG(v,inst,outSet);
@@ -1482,7 +1517,7 @@ function chordCard(name,rn,v,inst,outSet){
 const state={
   theme:'dark',
   instrument:'guitar',
-  tuningGuitar:'standard', tuningBass:'standard', tuningDulc:'dad', tuningBanjo:'openg', tuningUke:'standard', dulcNotation:'seq',
+  tuningGuitar:'standard', tuningBass:'standard', tuningDulc:'dad', tuningBanjo:'openg', tuningUke:'standard', dulcNotation:'seq', dulcFrets:'std',
   tab:'prog',
   root:0,
   inversion:'root',
@@ -1564,7 +1599,7 @@ function renderLibrary(){
       : state.instrument==='ukulele'
       ? ukeVoicing(state.root,q.tones,iv,pos,minF)
       : dulcVoicing(state.root,q.tones,iv,minF);
-    wrap.appendChild(chordCard(name,rn,v,state.instrument));
+    wrap.appendChild(chordCard(name,rn,v,state.instrument,undefined,q.tones.map(t=>(((state.root+t[0])%12)+12)%12)));
   });
   staggerChildren(wrap);
   out.appendChild(wrap);
@@ -1999,7 +2034,7 @@ function renderProgression(){
     }else{
       const v=slotVoicing(slot,ch);
       const invLabel={root:'root position',third:'3rd in bass',fifth:'5th in bass'}[slot.inv];
-      card=chordCard(ch.name,`${ch.rn} · ${invLabel}`,v,state.instrument,outSet);
+      card=chordCard(ch.name,`${ch.rn} · ${invLabel}`,v,state.instrument,outSet,ch.tones.map(t=>(((ch.pc+t[0])%12)+12)%12));
     }
     card.classList.add('wide','prog-card');
     if(!holders[i])return;
@@ -2077,26 +2112,26 @@ function fretboardSVG(pcMap,inst){
 function dulcFretboardSVG(pcMap){
   const C=th();
   const order=[1,2,3];                    // melody on top
-  const ku=34, left=76, top=24, rh=32, botpad=40;   // 34px per whole fret; .5 frets half
-  const maxN=DULC_FRETS[DULC_FRETS.length-1][0];
-  const W=left+maxN*ku+18, H=top+(order.length-1)*rh+botpad;
+  const su=24, left=76, top=24, rh=32, botpad=40;   // 24px per semitone, so gaps match the real neck
+  const maxS=DULC_FRETS[DULC_FRETS.length-1][1];
+  const W=left+maxS*su+18, H=top+(order.length-1)*rh+botpad;
   let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" xmlns="http://www.w3.org/2000/svg">`;
   DULC_FRETS.forEach(([fn,fs])=>{
-    const x=left+fn*ku;
+    const x=left+fs*su;
     s+=`<line x1="${x}" y1="${top-4}" x2="${x}" y2="${top+(order.length-1)*rh+4}" stroke="${fn===0?C.nut:C.fret}" stroke-width="${fn===0?5:1.5}"/>`;
     if(fn>0)
       s+=`<text x="${x}" y="${H-8}" text-anchor="middle" font-size="10.5" fill="${C.sub}" font-family="'Merriweather Sans',sans-serif">${dulcLabelForN(fn)}</text>`;
   });
   order.forEach((str,i)=>{
     const y=top+i*rh;
-    s+=`<line x1="${left}" y1="${y}" x2="${left+maxN*ku}" y2="${y}" stroke="${C.grid}" stroke-width="${0.9+(str-1)*0.4}"/>`;
+    s+=`<line x1="${left}" y1="${y}" x2="${left+maxS*su}" y2="${y}" stroke="${C.grid}" stroke-width="${0.9+(str-1)*0.4}"/>`;
   });
   order.forEach((str,i)=>{
     const y=top+i*rh;
     DULC_FRETS.forEach(([fn,fs],idx)=>{
       const pc=(DULC_OPEN[str]+fs)%12;
       if(!(pc in pcMap))return;
-      const x=fn===0?left-26:left+((fn+DULC_FRETS[idx-1][0])/2)*ku;
+      const x=fn===0?left-26:left+((fs+DULC_FRETS[idx-1][1])/2)*su;
       const {label,fill}=pcMap[pc];
       s+=`<circle cx="${x}" cy="${y}" r="11" fill="${fill}"/>`;
       s+=`<text x="${x}" y="${y+3.4}" text-anchor="middle" font-size="9.5" font-weight="600" fill="${textOn(fill)}" font-family="'Merriweather Sans',sans-serif">${label}</text>`;
@@ -2366,7 +2401,7 @@ function renderExercise(){
           wrap.appendChild(pianoCard(name,invLabel[inv],voi));
         }else{
           const iv=bassIvFor(info.tones,inv);
-          wrap.appendChild(chordCard(name,invLabel[inv],exVoicing(pc,info.tones,iv),state.instrument));
+          wrap.appendChild(chordCard(name,invLabel[inv],exVoicing(pc,info.tones,iv),state.instrument,undefined,info.tones.map(t=>(((pc+t[0])%12)+12)%12)));
         }
       });
       staggerChildren(wrap);
@@ -2389,7 +2424,7 @@ function renderExercise(){
         wrap.appendChild(pianoCard(name,`${info.rn} · ${invLabel[inv]}`,voi));
       }else{
         const iv=bassIvFor(info.tones,inv);
-        wrap.appendChild(chordCard(name,`${info.rn} · ${invLabel[inv]}`,exVoicing(pc,info.tones,iv),state.instrument));
+        wrap.appendChild(chordCard(name,`${info.rn} · ${invLabel[inv]}`,exVoicing(pc,info.tones,iv),state.instrument,undefined,info.tones.map(t=>(((pc+t[0])%12)+12)%12)));
       }
     }
     staggerChildren(wrap);
@@ -3624,15 +3659,30 @@ else{
 }
 const tuningSel=document.getElementById('tuning-sel');
 function syncDulcNotation(){
+  const isD=state.instrument==='dulcimer';
   const seg=document.getElementById('dulc-not-seg');
-  seg.hidden=state.instrument!=='dulcimer';
+  const extra=(DULC_LAYOUTS[state.dulcFrets]||DULC_LAYOUTS.std).extra;
+  // with no extra frets both numberings are identical, so the toggle is pointless
+  seg.hidden=!isD||!extra.length;
+  seg.querySelector('[data-not="trad"]').textContent=extra.includes(1.5)?'1·1.5·2':'6·6.5·7';
   [...seg.children].forEach(b=>b.classList.toggle('on',b.dataset.not===state.dulcNotation));
+  const fs=document.getElementById('dulc-frets-sel');
+  if(!fs.options.length)fs.innerHTML=Object.entries(DULC_LAYOUTS).map(([id,l])=>`<option value="${id}">${l.name}</option>`).join('');
+  fs.hidden=!isD;fs.value=state.dulcFrets;
 }
+document.getElementById('dulc-frets-sel').addEventListener('change',e=>{
+  state.dulcFrets=DULC_LAYOUTS[e.target.value]?e.target.value:'std';
+  applyDulcLayout(state.dulcFrets);
+  syncDulcNotation();
+  try{localStorage.setItem('mast_tuning',JSON.stringify({g:state.tuningGuitar,b:state.tuningBass,d:state.tuningDulc,j:state.tuningBanjo,u:state.tuningUke,n:state.dulcNotation,f:state.dulcFrets}));}catch(e2){}
+  if(AudioEngine.playing)AudioEngine.stop();
+  render();
+});
 document.getElementById('dulc-not-seg').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   state.dulcNotation=b.dataset.not;
   syncDulcNotation();
-  try{localStorage.setItem('mast_tuning',JSON.stringify({g:state.tuningGuitar,b:state.tuningBass,d:state.tuningDulc,j:state.tuningBanjo,u:state.tuningUke,n:state.dulcNotation}));}catch(e2){}
+  try{localStorage.setItem('mast_tuning',JSON.stringify({g:state.tuningGuitar,b:state.tuningBass,d:state.tuningDulc,j:state.tuningBanjo,u:state.tuningUke,n:state.dulcNotation,f:state.dulcFrets}));}catch(e2){}
   render();
 });
 function populateTuningSel(){
@@ -3649,7 +3699,7 @@ tuningSel.addEventListener('change',()=>{
   else if(state.instrument==='ukulele')state.tuningUke=tuningSel.value;
   else state.tuningDulc=tuningSel.value;
   applyTuning();
-  try{localStorage.setItem('mast_tuning',JSON.stringify({g:state.tuningGuitar,b:state.tuningBass,d:state.tuningDulc,j:state.tuningBanjo,u:state.tuningUke,n:state.dulcNotation}));}catch(e){}
+  try{localStorage.setItem('mast_tuning',JSON.stringify({g:state.tuningGuitar,b:state.tuningBass,d:state.tuningDulc,j:state.tuningBanjo,u:state.tuningUke,n:state.dulcNotation,f:state.dulcFrets}));}catch(e){}
   if(AudioEngine.playing)AudioEngine.stop();
   render();
 });
@@ -3661,7 +3711,9 @@ try{
   if(TUNINGS.banjo.some(t=>t.id===tv.j))state.tuningBanjo=tv.j;
   if(TUNINGS.ukulele.some(t=>t.id===tv.u))state.tuningUke=tv.u;
   if(tv.n==='trad'||tv.n==='seq')state.dulcNotation=tv.n;
+  if(DULC_LAYOUTS[tv.f])state.dulcFrets=tv.f;
 }catch(e){}
+applyDulcLayout(state.dulcFrets);
 applyTuning();
 populateTuningSel();
 syncDulcNotation();
