@@ -322,6 +322,7 @@ input[type=range]{accent-color:var(--sel-bg);width:140px;vertical-align:middle}
 
 /* ---------- phone layout (≤720px): top instrument menu, bottom tab bar, mini player ---------- */
 @media (max-width:720px){
+  .fx-ctl{display:none}
   body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
   body.has-mini{padding-bottom:calc(136px + env(safe-area-inset-bottom))}
 
@@ -450,7 +451,7 @@ input[type=range]{accent-color:var(--sel-bg);width:140px;vertical-align:middle}
           <button class="help-x" id="help-x" aria-label="Close help">✕</button>
         </div>
         <h3>Chords</h3>
-        <p>Each card is one chord. Use its menus to pick the chord and its type, or <b>+ Add chord</b> to add more. <b>Genre presets</b> loads a ready-made progression.</p>
+        <p>Each card is one chord. Use its menus to pick the chord and its type, or <b>+ Add chord</b> to add more. <b>Progression presets</b> loads a ready-made progression.</p>
         <h3>Inversions</h3>
         <p><b>Root in the bass</b> sets which note is lowest. The menus below it move the shape to other strings or up the neck.</p>
         <h3>Key and mode</h3>
@@ -540,6 +541,10 @@ input[type=range]{accent-color:var(--sel-bg);width:140px;vertical-align:middle}
           <option value="square">Chip (square)</option>
         </select>
       </div>
+      <div class="ctl fx-ctl">
+        <label class="cap" for="prog-fx">Effect</label>
+        <select id="prog-fx"></select>
+      </div>
       <div class="ctl">
         <label class="cap" for="prog-tempo">Tempo <span class="rangeval" id="prog-tempo-val"></span></label>
         <input type="range" id="prog-tempo" min="40" max="220" step="2" aria-label="Tempo in BPM">
@@ -627,7 +632,7 @@ input[type=range]{accent-color:var(--sel-bg);width:140px;vertical-align:middle}
         <select id="region-sel"></select>
       </div>
       <div class="ctl">
-        <label class="cap" for="preset-sel">Genre presets</label>
+        <label class="cap" for="preset-sel">Progression presets</label>
         <select id="preset-sel"></select>
       </div>
     </div>
@@ -1474,7 +1479,7 @@ const state={
   exRoot:0, exScale:'major', exInv:'root', exPosGuitar:'6', exPosBass:'E', exPosBanjo:'4', exPosUke:'321', exMode:'grips',
   arpInv:'root', arpPat:'straight', arpSkip:false,
   findRoot:0, findNotes:[0],
-  voice:'triangle', tempo:96, volume:70, loop:false, rhythm:'off',
+  voice:'triangle', fx:'dry', tempo:96, volume:70, loop:false, rhythm:'off',
   progPlay:'chords', progArpMode:'up', bassMode:'off',
   modesOpen:false,
   region:'any',
@@ -2480,24 +2485,24 @@ function renderFinder(){
   out.querySelectorAll('.cards').forEach(staggerChildren);
 }
 
-/* ================= genre presets ================= */
+/* ================= progression presets ================= */
 const PRESETS=[
   // ——— Common progressions ———
-  {genre:'Common progressions', name:'I – IV – V · three-chord bedrock (rock, blues, country)', scale:'major', seventh:false, degrees:[0,3,4]},
-  {genre:'Common progressions', name:'I – V – vi – IV · the four magic chords (pop axis)',      scale:'major', seventh:false, degrees:[0,4,5,3]},
-  {genre:'Common progressions', name:'vi – IV – I – V · the axis, minor side (somber pop)',     scale:'major', seventh:false, degrees:[5,3,0,4]},
-  {genre:'Common progressions', name:"I – vi – IV – V · doo-wop / '50s progression",            scale:'major', seventh:false, degrees:[0,5,3,4]},
-  {genre:'Common progressions', name:'IV – V – I – vi · cyclical axis flip (never resolves)',   scale:'major', seventh:false, degrees:[3,4,0,5]},
-  {genre:'Common progressions', name:'ii – V – I · the jazz cadence',                           scale:'major', seventh:true,  degrees:[1,4,0]},
-  {genre:'Common progressions', name:'vi – ii – V – I · circle progression (I Got Rhythm)',     scale:'major', seventh:true,  degrees:[5,1,4,0]},
-  {genre:'Common progressions', name:'I – V – vi – iii – IV – I · Pachelbel canon',             scale:'major', seventh:false, degrees:[0,4,5,2,3,0]},
-  {genre:'Common progressions', name:'12-bar blues · I7 – IV7 – V7 skeleton',                   scale:'major', seventh:true,  degrees:['b:I7','b:IV7','b:I7',4,'b:IV7','b:I7']},
-  {genre:'Common progressions', name:'vi – V – IV – III7 · Andalusian descent (Sultans of Swing)', scale:'major', seventh:false, degrees:[5,4,3,'b:III7']},
-  {genre:'Common progressions', name:'i – ♭VII – ♭VI – ♭VII · minor climb (Rolling in the Deep)', scale:'nminor', seventh:false, degrees:[0,6,5,6]},
-  {genre:'Common progressions', name:'I – IV – iv – I · borrowed-iv fade (bittersweet)',        scale:'major', seventh:false, degrees:[0,3,'b:iv',0]},
-  {genre:'Common progressions', name:'♭VI – ♭VII – I · the Mario cadence (triumphant)',         scale:'major', seventh:false, degrees:['b:bVI','b:bVII',0]},
-  {genre:'Common progressions', name:'IΔ7 – ♭IIΔ7 · phrygian shadow (Everything in Its Right Place)', scale:'major', seventh:true, degrees:[0,'b:bII']},
-  {genre:'Common progressions', name:'I – III7 – IV – iv · the Creep progression',              scale:'major', seventh:false, degrees:[0,'b:III7',3,'b:iv']},
+  {genre:'Common progressions', name:'I – IV – V', scale:'major', seventh:false, degrees:[0,3,4]},
+  {genre:'Common progressions', name:'I – V – vi – IV',      scale:'major', seventh:false, degrees:[0,4,5,3]},
+  {genre:'Common progressions', name:'vi – IV – I – V',     scale:'major', seventh:false, degrees:[5,3,0,4]},
+  {genre:'Common progressions', name:'I – vi – IV – V',            scale:'major', seventh:false, degrees:[0,5,3,4]},
+  {genre:'Common progressions', name:'IV – V – I – vi',   scale:'major', seventh:false, degrees:[3,4,0,5]},
+  {genre:'Common progressions', name:'ii – V – I',                           scale:'major', seventh:true,  degrees:[1,4,0]},
+  {genre:'Common progressions', name:'vi – ii – V – I',     scale:'major', seventh:true,  degrees:[5,1,4,0]},
+  {genre:'Common progressions', name:'I – V – vi – iii – IV – I',             scale:'major', seventh:false, degrees:[0,4,5,2,3,0]},
+  {genre:'Common progressions', name:'I7 – IV7 – I7 – V7 – IV7 – I7',                   scale:'major', seventh:true,  degrees:['b:I7','b:IV7','b:I7',4,'b:IV7','b:I7']},
+  {genre:'Common progressions', name:'vi – V – IV – III7', scale:'major', seventh:false, degrees:[5,4,3,'b:III7']},
+  {genre:'Common progressions', name:'i – ♭VII – ♭VI – ♭VII', scale:'nminor', seventh:false, degrees:[0,6,5,6]},
+  {genre:'Common progressions', name:'I – IV – iv – I',        scale:'major', seventh:false, degrees:[0,3,'b:iv',0]},
+  {genre:'Common progressions', name:'♭VI – ♭VII – I',         scale:'major', seventh:false, degrees:['b:bVI','b:bVII',0]},
+  {genre:'Common progressions', name:'IΔ7 – ♭IIΔ7', scale:'major', seventh:true, degrees:[0,'b:bII']},
+  {genre:'Common progressions', name:'I – III7 – IV – iv',              scale:'major', seventh:false, degrees:[0,'b:III7',3,'b:iv']},
   // ——— Alternative ———
   {genre:'Alternative', name:'E-Pro — Beck', key:4, scale:'mixo', seventh:false, degrees:[0,6,3]},
   {genre:'Alternative', name:'Feel The Pain — Dinosaur Jr.', key:0, scale:'major', seventh:false, degrees:[0,3,1,4,2,5]},
@@ -2506,7 +2511,6 @@ const PRESETS=[
   {genre:'Alternative', name:'Close to Me — The Cure', key:11,             scale:'major', seventh:false, degrees:[0,2,0,1,5,4]},
   // ——— Dream pop ———
   {genre:'Dream pop', name:'Boyish — Japanese Breakfast', key:0,                    scale:'major', seventh:false, degrees:[0,2,1,4]},
-  {genre:'Dream pop', name:'Everybody Wants to Love You — Japanese Breakfast', key:7, scale:'major', seventh:false, degrees:[0,5,3,0]},
   {genre:'Dream pop', name:'Adult Diversion — Alvvays', key:9,                      scale:'major', seventh:false, degrees:[0,5,3,1]},
   {genre:'Dream pop', name:"I Follow You — Melody's Echo Chamber", key:0,           scale:'major', seventh:true,  degrees:[1,4,2,5]},
   {genre:'Dream pop', name:'Lemon Glow — Beach House', key:0,                       scale:'major', seventh:true,  degrees:[2,3,0]},
@@ -2520,35 +2524,23 @@ const PRESETS=[
   {genre:'Psychedelic rock', name:'Voodoo Child (Slight Return) — Jimi Hendrix', key:4, scale:'major', seventh:false, degrees:[0,'b:bVI','b:bVII']},
   {genre:'Psychedelic rock', name:'Sunshine of Your Love — Cream', key:2,             scale:'major',  seventh:true,  degrees:['b:I7','b:IV7','b:I7',4,'b:bVII','b:IV7']},
   {genre:'Psychedelic rock', name:'Honey — King Gizzard & The Lizard Wizard', key:6, scale:'major', seventh:false, degrees:[0,'b:I7','b:bIII','b:bVII',0,3]},
-  {genre:'Psychedelic rock', name:'Iron Lung — King Gizzard & The Lizard Wizard', key:9, scale:'nminor', seventh:true, degrees:[5,0]},
   {genre:'Psychedelic rock', name:'Ladies and Gentlemen We Are Floating in Space — Spiritualized', key:2, scale:'major', seventh:false, degrees:[0,4,5,2,3,0]},
   {genre:'Psychedelic rock', name:'Feeling Yourself Disintegrate — The Flaming Lips', key:4, scale:'major', seventh:false, degrees:[0,3,0,2,1,4]},
   // ——— IDM ———
   {genre:'IDM', name:'Black Sands — Bonobo', key:0, scale:'nminor', seventh:true, degrees:[4,5,4,0,5,0]},
   {genre:'IDM', name:'Flim — Aphex Twin', key:10,            scale:'major',  seventh:false, degrees:[0,2,3,5,1]},
-  {genre:'IDM', name:'Xtal — Aphex Twin', key:10,            scale:'major',  seventh:false, degrees:[0,5,3,4]},
-  {genre:'IDM', name:'Ageispolis — Aphex Twin', key:5,      scale:'dorian', seventh:true,  degrees:[0,3]},
   {genre:'IDM', name:'Roygbiv — Boards of Canada', key:9,   scale:'mixo',   seventh:false, degrees:[0,6,3,6]},
   // ——— Jazz ———
   {genre:'Jazz', name:'Take Five — Dave Brubeck', key:3,                 scale:'nminor', seventh:true,  degrees:[0,4]},
   {genre:'Jazz', name:'Song For My Father — Horace Silver', key:8,       scale:'major',  seventh:true,  degrees:[5,4,3,'b:III7']},
   {genre:'Jazz', name:"Well, You Needn't — Thelonious Monk", key:5,      scale:'major',  seventh:false, degrees:[0,'b:bII']},
-  {genre:'Jazz', name:'Hackensack — Thelonious Monk', key:5,             scale:'major',  seventh:true,  degrees:[0,5,1,4]},
   {genre:'Jazz', name:'Devil Woman — Charles Mingus', key:10,             scale:'major',  seventh:true,  degrees:['b:I7','b:IV7','b:I7',4,'b:IV7','b:I7']},
-  {genre:'Jazz', name:'Goodbye Pork Pie Hat — Charles Mingus', key:3,    scale:'nminor', seventh:true,  degrees:[0,5,4,3]},
-  {genre:'Jazz', name:'Hog Calling Blues — Charles Mingus', key:10,       scale:'major',  seventh:true,  degrees:['b:I7','b:IV7','b:I7',4,'b:IV7','b:I7']},
   // ——— Space jazz ———
   {genre:'Space jazz', name:'Space Is the Place — Sun Ra', key:5,           scale:'dorian', seventh:true,  degrees:[0,6]},
-  {genre:'Space jazz', name:'Nuclear War — Sun Ra', key:5,                  scale:'major',  seventh:true,  degrees:[2,'b:I7',5,3]},
-  {genre:'Space jazz', name:'Tapestry From An Asteroid — Sun Ra', key:8,    scale:'major',  seventh:true,  degrees:[1,4,0]},
-  {genre:'Space jazz', name:'Springtime Again — Sun Ra', key:0,             scale:'major',  seventh:false, degrees:[0,'b:v',0,3]},
   {genre:'Space jazz', name:'Journey In Satchidananda — Alice Coltrane', key:4, scale:'dorian', seventh:true, degrees:[0]},
   // ——— Afrobeat ———
   {genre:'Afrobeat', name:'Zombie — Fela Kuti', key:7,              scale:'dorian', seventh:true,  degrees:[0,2]},
-  {genre:'Afrobeat', name:'Water No Get Enemy — Fela Kuti', key:3,  scale:'dorian', seventh:true,  degrees:[0,1,4,0]},
-  {genre:'Afrobeat', name:'Expensive Shit — Fela Kuti', key:0,      scale:'dorian', seventh:true,  degrees:[0]},
   {genre:'Afrobeat', name:'Fantastic Man — William Onyeabor', key:7, scale:'major', seventh:false, degrees:[0,1]},
-  {genre:'Afrobeat', name:'Good Name — William Onyeabor', key:5,    scale:'nminor', seventh:false, degrees:[0,3]},
 ];
 function applyPreset(idx){
   const p=PRESETS[idx];
@@ -2582,17 +2574,94 @@ function applyPreset(idx){
 }
 
 /* ================= audio playback ================= */
+// lead-voice effect presets (Progression builder). chorus/echo/rev are wet levels,
+// beats = echo time in beats (0.75 = dotted eighth), fb = echo feedback
+const FX_PRESETS={
+  dry:     {label:'Dry'},
+  room:    {label:'Small room', verb:'room', rev:1.2},
+  hall:    {label:'Hall', verb:'hall', rev:0.55},
+  echo:    {label:'Echo', echo:0.38, fb:0.38, beats:0.75},
+  roomecho:{label:'Room + echo', verb:'room', rev:0.9, echo:0.3, fb:0.32, beats:0.75},
+  chorus:  {label:'Chorus', chorus:0.55},
+  shimmer: {label:'Shimmer (chorus + hall)', chorus:0.5, verb:'hall', rev:0.6},
+};
 const AudioEngine={
   ctx:null,master:null,timers:[],playing:false,source:null,pluckBufs:{},
   ensure(){
     if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();
     if(this.ctx.state==='suspended')this.ctx.resume();
-    if(!this.master){this.master=this.ctx.createGain();this.master.connect(this.ctx.destination);}
+    if(!this.master){this.master=this.ctx.createGain();this.master.connect(this.ctx.destination);this.buildFx();}
     this.master.gain.value=Math.pow(state.volume/100,1.6)*0.8;
+    this.applyFx();
   },
   freq(m){return 440*Math.pow(2,(m-69)/12);},
-  noteAt(t,midi,dur){
-    if(state.voice==='pluck'){this.pluckAt(t,midi,dur);return;}
+  /* ---- lead-voice effects: chorus → (dry + echo + reverb) → master ---- */
+  fx:null,irCache:{},
+  makeIR(type){
+    if(this.irCache[type])return this.irCache[type];
+    const sr=this.ctx.sampleRate;
+    const secs=type==='hall'?3.2:1.1, pre=type==='hall'?0.022:0.008;
+    const len=Math.floor(sr*(secs+pre)),start=Math.floor(sr*pre);
+    const ir=this.ctx.createBuffer(2,len,sr);
+    for(let ch=0;ch<2;ch++){
+      const d=ir.getChannelData(ch);let lp=0;
+      for(let i=start;i<len;i++){
+        const x=(i-start)/(len-start);
+        const k=0.55+0.4*x;                       // tail darkens as it decays
+        lp=lp*k+(Math.random()*2-1)*(1-k);
+        d[i]=lp*Math.pow(1-x,type==='hall'?2.2:3)*3;
+      }
+    }
+    return this.irCache[type]=ir;
+  },
+  buildFx(){
+    const c=this.ctx,fx={};
+    fx.in=c.createGain();fx.post=c.createGain();fx.dry=c.createGain();
+    fx.in.connect(fx.dry);fx.dry.connect(fx.post);
+    // chorus: two slowly-wobbling short delays panned left and right
+    fx.lfo=c.createOscillator();fx.lfo.frequency.value=0.7;fx.lfo.start();
+    fx.chWet=c.createGain();fx.chWet.gain.value=0;
+    [[0.016,0.0035,-0.7],[0.023,-0.0035,0.7]].forEach(([base,depth,pan])=>{
+      const dl=c.createDelay(0.06);dl.delayTime.value=base;
+      const amt=c.createGain();amt.gain.value=depth;
+      fx.lfo.connect(amt);amt.connect(dl.delayTime);
+      const p=c.createStereoPanner?c.createStereoPanner():c.createGain();
+      if(p.pan)p.pan.value=pan;
+      fx.in.connect(dl);dl.connect(p);p.connect(fx.chWet);
+    });
+    fx.chWet.connect(fx.post);
+    fx.post.connect(this.master);
+    // echo: tempo-synced, each repeat a little darker
+    fx.dSend=c.createGain();fx.dSend.gain.value=0;
+    fx.delay=c.createDelay(3);fx.fb=c.createGain();fx.fb.gain.value=0;
+    fx.delay.delayTime.value=Math.min(2.9,((FX_PRESETS[state.fx]||{}).beats||0.75)*60/state.tempo);
+    fx.dTone=c.createBiquadFilter();fx.dTone.type='lowpass';fx.dTone.frequency.value=2400;
+    fx.post.connect(fx.dSend);fx.dSend.connect(fx.delay);fx.delay.connect(fx.dTone);
+    fx.dTone.connect(fx.fb);fx.fb.connect(fx.delay);fx.dTone.connect(this.master);
+    // reverb: one convolver per space, fed from the dry+chorus signal and the echoes
+    fx.verbs={};
+    ['room','hall'].forEach(type=>{
+      const send=c.createGain();send.gain.value=0;
+      const cv=c.createConvolver();cv.buffer=this.makeIR(type);
+      fx.post.connect(send);fx.dTone.connect(send);send.connect(cv);cv.connect(this.master);
+      fx.verbs[type]=send;
+    });
+    this.fx=fx;
+  },
+  applyFx(){
+    const fx=this.fx;if(!fx)return;
+    const p=FX_PRESETS[state.fx]||FX_PRESETS.dry,now=this.ctx.currentTime,tc=0.03;
+    const set=(param,v)=>param.setTargetAtTime(v,now,tc);
+    set(fx.chWet.gain,p.chorus||0);
+    set(fx.dry.gain,p.chorus?0.8:1);
+    set(fx.dSend.gain,p.echo||0);
+    set(fx.fb.gain,p.echo?p.fb:0);
+    fx.delay.delayTime.setTargetAtTime(Math.min(2.9,(p.beats||0.75)*60/state.tempo),now,0.05);
+    Object.entries(fx.verbs).forEach(([type,send])=>set(send.gain,p.verb===type?p.rev:0));
+  },
+  leadOut(){return this.fx?this.fx.in:this.master;},
+  noteAt(t,midi,dur,lead){
+    if(state.voice==='pluck'){this.pluckAt(t,midi,dur,lead);return;}
     const o=this.ctx.createOscillator();
     o.type=state.voice;
     o.frequency.value=this.freq(midi);
@@ -2601,10 +2670,10 @@ const AudioEngine={
     g.gain.setValueAtTime(0.0001,t);
     g.gain.exponentialRampToValueAtTime(peak,t+0.012);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    o.connect(g);g.connect(this.master);
+    o.connect(g);g.connect(lead?this.leadOut():this.master);
     o.start(t);o.stop(t+dur+0.05);
   },
-  pluckAt(t,midi,dur){
+  pluckAt(t,midi,dur,lead){
     let buf=this.pluckBufs[midi];
     if(!buf){
       const sr=this.ctx.sampleRate,len=Math.floor(sr*2.5);
@@ -2613,6 +2682,18 @@ const AudioEngine={
       const period=Math.max(2,Math.round(sr/this.freq(midi)));
       const ring=new Float32Array(period);
       for(let i=0;i<period;i++)ring[i]=Math.random()*2-1;
+      // soften the excitation: a few passes of smoothing turn the white-noise
+      // "pick scratch" into a rounder, finger-like attack
+      const tmp=new Float32Array(period);
+      for(let pass=0;pass<3;pass++){
+        for(let i=0;i<period;i++)tmp[i]=(ring[(i+period-1)%period]+2*ring[i]+ring[(i+1)%period])/4;
+        ring.set(tmp);
+      }
+      let mean=0,pk=0;
+      for(let i=0;i<period;i++)mean+=ring[i];
+      mean/=period;
+      for(let i=0;i<period;i++){ring[i]-=mean;pk=Math.max(pk,Math.abs(ring[i]));}
+      if(pk>0)for(let i=0;i<period;i++)ring[i]/=pk;
       let idx=0;
       for(let i=0;i<len;i++){
         const cur=ring[idx],nxt=ring[(idx+1)%period];
@@ -2622,11 +2703,19 @@ const AudioEngine={
       this.pluckBufs[midi]=buf;
     }
     const s=this.ctx.createBufferSource();s.buffer=buf;
+    // warm tone filter: bright at the pluck, mellowing as the note rings
+    const f=this.ctx.createBiquadFilter();
+    f.type='lowpass';f.Q.value=0.5;
+    const fr=this.freq(midi);
+    f.frequency.setValueAtTime(Math.min(5000,fr*10+1800),t);
+    f.frequency.exponentialRampToValueAtTime(Math.min(2600,fr*4+700),t+0.45);
     const g=this.ctx.createGain();
-    g.gain.setValueAtTime(0.55,t);
-    g.gain.setValueAtTime(0.55,t+Math.max(0.05,dur-0.08));
+    const peak=0.32;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(peak,t+0.004);
+    g.gain.setValueAtTime(peak,t+Math.max(0.05,dur-0.08));
     g.gain.linearRampToValueAtTime(0.0001,t+dur);
-    s.connect(g);g.connect(this.master);
+    s.connect(f);f.connect(g);g.connect(lead?this.leadOut():this.master);
     s.start(t);s.stop(t+dur+0.05);
   },
   noiseBuf:null,
@@ -2685,13 +2774,17 @@ const AudioEngine={
     o.start(t);o.stop(t+0.07);
   },
   later(fn,ms){this.timers.push(setTimeout(fn,Math.max(0,ms)));},
-  stop(){
+  stop(keepTails){
     this.playing=false;this.source=null;
     this.timers.forEach(clearTimeout);this.timers=[];
-    if(this.ctx&&this.master){
-      try{this.master.disconnect();}catch(e){}
+    if(this.ctx&&this.master&&!keepTails){
+      const old=this.master,oldFx=this.fx,now=this.ctx.currentTime;
+      old.gain.cancelScheduledValues(now);old.gain.setValueAtTime(old.gain.value,now);
+      old.gain.linearRampToValueAtTime(0,now+0.06);
+      setTimeout(()=>{try{old.disconnect();}catch(e){}try{oldFx&&oldFx.lfo.stop();}catch(e){}},150);
       this.master=this.ctx.createGain();this.master.connect(this.ctx.destination);
       this.master.gain.value=Math.pow(state.volume/100,1.6)*0.8;
+      this.buildFx();this.applyFx();
     }
     clearProgHighlight();updatePlayButtons();
   }
@@ -2822,9 +2915,9 @@ function runProgPass(chords,t0,roots){
     if(state.progPlay==='arp'&&midis.length){
       const asc=[...midis].sort((a,b)=>a-b);
       for(let k=0;k<8;k++)
-        AudioEngine.noteAt(t+k*(beat/2),asc[arpIndex(k,asc.length,state.progArpMode)],beat*0.48);
+        AudioEngine.noteAt(t+k*(beat/2),asc[arpIndex(k,asc.length,state.progArpMode)],beat*0.48,true);
     }else{
-      midis.forEach((m,j)=>AudioEngine.noteAt(t+j*0.035,m,bar*0.95));
+      midis.forEach((m,j)=>AudioEngine.noteAt(t+j*0.035,m,bar*0.95,true));
     }
     AudioEngine.later(()=>highlightProgCard(i),(t-AudioEngine.ctx.currentTime)*1000);
   });
@@ -2833,7 +2926,7 @@ function runProgPass(chords,t0,roots){
   AudioEngine.later(()=>{
     if(!AudioEngine.playing)return;
     if(state.loop)runProgPass(chords,end,roots);
-    else AudioEngine.later(()=>{if(AudioEngine.playing)AudioEngine.stop();},
+    else AudioEngine.later(()=>{if(AudioEngine.playing)AudioEngine.stop(true);},
       Math.max(0,(end-AudioEngine.ctx.currentTime)*1000+20));
   },Math.max(0,(end-AudioEngine.ctx.currentTime)*1000-250));
 }
@@ -2987,6 +3080,11 @@ function syncProgPlayCtls(){
 }
 function syncAudioCtls(){
   syncProgPlayCtls();
+  const fxSel=document.getElementById('prog-fx');
+  if(fxSel){
+    if(!fxSel.options.length)fxSel.innerHTML=Object.entries(FX_PRESETS).map(([id,p])=>`<option value="${id}">${p.label}</option>`).join('');
+    fxSel.value=state.fx;
+  }
   ['prog','arp'].forEach(p=>{
     const g=id=>document.getElementById(p+'-'+id);
     if(!g('voice'))return;
@@ -3011,7 +3109,7 @@ function bindAudioCtls(p,playFn,exportFn){
   const g=id=>document.getElementById(p+'-'+id);
   g('play').addEventListener('click',playFn);
   g('voice').addEventListener('change',e=>{state.voice=e.target.value;syncAudioCtls();});
-  g('tempo').addEventListener('input',e=>{state.tempo=parseInt(e.target.value);syncAudioCtls();});
+  g('tempo').addEventListener('input',e=>{state.tempo=parseInt(e.target.value);AudioEngine.applyFx();syncAudioCtls();});
   g('vol').addEventListener('input',e=>{
     state.volume=parseInt(e.target.value);
     if(AudioEngine.master)AudioEngine.master.gain.value=Math.pow(state.volume/100,1.6)*0.8;
@@ -3023,6 +3121,8 @@ function bindAudioCtls(p,playFn,exportFn){
   });
   g('rhythm').addEventListener('change',e=>{state.rhythm=e.target.value;syncAudioCtls();});
   g('midi').addEventListener('click',exportFn);
+  const fxSel=g('fx');
+  if(fxSel)fxSel.addEventListener('change',e=>{state.fx=e.target.value;AudioEngine.applyFx();syncAudioCtls();});
 }
 
 /* ================= save & load progressions ================= */
@@ -3043,7 +3143,7 @@ function progPayload(){
     posGuitar:state.posGuitar,posBass:state.posBass,posUke:state.posUke,
     region:state.region,
     slots:state.slots.map(s=>({degree:s.degree,inv:s.inv,ctype:s.ctype||'seventh',pos:s.pos,region:s.region||'any',sub:s.sub||'none',pqual:s.pqual||'maj',pext:s.pext||'none',pinv:s.pinv||0})),
-    tempo:state.tempo,voice:state.voice,rhythm:state.rhythm,progPlay:state.progPlay,progArpMode:state.progArpMode,bassMode:state.bassMode};
+    tempo:state.tempo,voice:state.voice,fx:state.fx,rhythm:state.rhythm,progPlay:state.progPlay,progArpMode:state.progArpMode,bassMode:state.bassMode};
 }
 function validDegree(d){
   const s=String(d);
@@ -3072,6 +3172,8 @@ function applyPayload(p){
   }));
   if(Number.isFinite(p.tempo))state.tempo=Math.min(220,Math.max(40,Math.round(p.tempo)));
   if(['pluck','triangle','sine','sawtooth','square'].includes(p.voice))state.voice=p.voice;
+  state.fx=FX_PRESETS[p.fx]?p.fx:'dry';
+  AudioEngine.applyFx();
   if(p.rhythm==='off'||p.rhythm==='click'||BEATS.some(b=>b.id===p.rhythm))state.rhythm=p.rhythm;
   if(p.progPlay==='chords'||p.progPlay==='arp')state.progPlay=p.progPlay;
   if(['up','down','updown','random'].includes(p.progArpMode))state.progArpMode=p.progArpMode;
